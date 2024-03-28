@@ -12,7 +12,7 @@ Just run:
 
 ```bash
 #sudo su
-wget https://raw.githubusercontent.com/Theodikes/ipv6-proxy-server/master/ipv6-proxy-server.sh && chmod +x ipv6-proxy-server.sh
+wget https://raw.githubusercontent.com/phungthelam1996/ipv6-proxy-server/master/ipv6-proxy-server.sh && chmod +x ipv6-proxy-server.sh
 ./ipv6-proxy-server.sh -s 64 -c 100 -u username -p password -t http -r 10
 ```
 
