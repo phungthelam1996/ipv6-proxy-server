@@ -198,7 +198,10 @@ function create_random_string(){
 
 function kill_3proxy(){
   ps -ef | awk '/[3]proxy/{print $2}' | while read -r pid; do
-    kill $pid
+    try
+      kill $pid;
+    catch
+      echo "Kill error!";
   done;
 }
 
@@ -510,7 +513,10 @@ function create_startup_script(){
 
   # Kill old 3proxy daemon, if it's working
   for pid in "\${proxyserver_process_pids[@]}"; do
-    kill \$pid;
+    try
+      kill \$pid;
+    catch
+      echo "Kill error!";
   done;
 
   # Remove old random ip list after running new 3proxy instance
