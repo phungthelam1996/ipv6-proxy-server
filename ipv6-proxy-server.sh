@@ -1,9 +1,12 @@
 #!/bin/bash
 # Script must be running from root
+
 if [ "$EUID" -ne 0 ];
   then echo "Please run as root";
   exit 1;
 fi;
+
+all_params=$@
 
 # Program help info for users
 function usage() { echo "Usage: $0 [-s | --subnet <16|32|48|64|80|96|112> proxy subnet (default 64)] 
@@ -171,7 +174,11 @@ random_users_list_file="$proxy_dir/random_users.list"
 # Define correct path to file with backconnect proxies list, if it isn't defined by user
 if [[ $backconnect_proxies_file == "default" ]]; then backconnect_proxies_file="$proxy_dir/backconnect_proxies.list"; fi;
 # Script on server startup (generate random ids and run proxy daemon)
+change_script_path="$proxy_dir/change-proxy.sh"
+# custom scrip run startup
 startup_script_path="$proxy_dir/proxy-startup.sh"
+# check proxy live every minutes
+check_script_path="$proxy_dir/proxy-check.sh"
 # Cron config path (start proxy server after linux reboot and IPs rotations)
 cron_script_path="$proxy_dir/proxy-server.cron"
 # Last opened port for backconnect proxy
@@ -352,18 +359,22 @@ function configure_ipv6(){
 function add_to_cron(){
   delete_file_if_exists $cron_script_path;
 
-  # Add startup script to cron (job sheduler) to restart proxy server after reboot and rotate proxy pool
-  echo "@reboot $bash_location $startup_script_path" > $cron_script_path;
-  if [ $rotating_interval -ne 0 ]; then echo "*/$rotating_interval * * * * $bash_location $startup_script_path" >> "$cron_script_path"; fi;
+  # Add startup script to cron (job sheduler) to restart proxy server after reboot and rotate proxy 
+  if test -f $startup_script_path; then
+    echo "File created";
+  else
+    echo "@reboot $bash_location $startup_script_path" > $cron_script_path;
+    if [ $rotating_interval -ne 0 ]; then echo "*/$rotating_interval * * * * $bash_location $change_script_path" >> "$cron_script_path"; fi;
+  fi;
 
   # Add existing cron rules (not related to this proxy server) to cron script, so that they are not removed
   # https://unix.stackexchange.com/questions/21297/how-do-i-add-an-entry-to-my-crontab
-  crontab -l | grep -v $startup_script_path >> $cron_script_path;
+  crontab -l | grep -v $change_script_path >> $cron_script_path;
 
   crontab $cron_script_path;
   systemctl restart cron;
 
-  if crontab -l | grep -q $startup_script_path; then 
+  if crontab -l | grep -q $change_script_path; then 
     echo "Proxy startup script added to cron autorun successfully";
   else
     log_err "Warning: adding script to cron autorun failed.";
@@ -372,11 +383,11 @@ function add_to_cron(){
 
 function remove_from_cron(){
   # Delete all occurencies of proxy script in crontab
-  crontab -l | grep -v $startup_script_path > $cron_script_path;
+  crontab -l | grep -v $change_script_path > $cron_script_path;
   crontab $cron_script_path;
   systemctl restart cron;
 
-  if crontab -l | grep -q $startup_script_path; then
+  if crontab -l | grep -q $change_script_path; then
     log_err "Warning: cannot delete proxy script from crontab";
   else
     echo "Proxy script deleted from crontab successfully";
@@ -394,14 +405,42 @@ function generate_random_users_if_needed(){
 }
 
 function create_startup_script(){
-  delete_file_if_exists $startup_script_path;
+  delete_file_if_exists $change_script_path;
 
   is_auth_used;
   local use_auth=$?;
 
-  # Add main script that runs proxy server and rotates external ip's, if server is already running
   cat > $startup_script_path <<-EOF
   #!$bash_location
+
+  while true
+  do
+      if ping -c 1 -W 5 google.com 1>/dev/null 2>&1 
+      then
+          echo "Connected!"
+          break
+      else
+          echo "Not Connected!"
+          sleep 1
+      fi
+  done
+
+  "$0" $all_params;
+
+  exit 0;
+EOF
+
+  # Add main script that runs proxy server and rotates external ip's, if server is already running
+  cat > $change_script_path <<-EOF
+  #!$bash_location
+
+  # if curl ipv6.icanhazip.com -x $backconnect_ipv4:$start_port | grep -q '2001:ee0'; then
+  #   echo "Proxy check successfully";
+  # else
+  #   /sbin/reboot;
+  #   exit 0;
+  # fi;
+
 
   # Remove leading whitespaces in every string in text
   function dedent() {
@@ -428,15 +467,22 @@ function create_startup_script(){
   # Generate random hex symbol
   function rh () { echo \${array[\$RANDOM%16]}; }
 
+  
+  random() {
+    tr </dev/urandom -dc A-Za-z0-9 | head -c5
+    echo
+  }
+
+  arrayHex=(1 2 3 4 5 6 7 8 9 0 a b c d e f)
+  gen64() {
+    ip64() {
+        echo "\${arrayHex[\$RANDOM % 16]}\${arrayHex[\$RANDOM % 16]}\${arrayHex[\$RANDOM % 16]}\${arrayHex[\$RANDOM % 16]}"
+    }
+    echo "\$1:\$(ip64):\$(ip64):\$(ip64):\$(ip64)"
+  }
+
   rnd_subnet_ip () {
-    echo -n $(get_subnet_mask);
-    symbol=$subnet
-    while (( \$symbol < 128)); do
-      if ((\$symbol % 16 == 0)); then echo -n :; fi;
-      echo -n \$(rh);
-      let "symbol += 4";
-    done;
-    echo ;
+    echo -e \$(gen64 $(get_subnet_mask))
   }
 
   # Temporary variable to count generated ip's in cycle
@@ -563,10 +609,11 @@ function open_ufw_backconnect_ports(){
 }
 
 function run_proxy_server(){
-  if [ ! -f $startup_script_path ]; then log_err_and_exit "Error: proxy startup script doesn't exist."; fi;
+  if [ ! -f $change_script_path ]; then log_err_and_exit "Error: proxy startup script doesn't exist."; fi;
 
+  chmod +x $change_script_path;
   chmod +x $startup_script_path;
-  $bash_location $startup_script_path;
+  $bash_location $change_script_path;
   if is_proxyserver_running; then 
     echo -e "\nIPv6 proxy server started successfully. Backconnect IPv4 is available from $backconnect_ipv4:$start_port$credentials to $backconnect_ipv4:$last_port$credentials via $proxies_type protocol";
     echo "You can copy all proxies (with credentials) in this file: $backconnect_proxies_file";
