@@ -388,7 +388,7 @@ function add_to_cron(){
 
   # Add existing cron rules (not related to this proxy server) to cron script, so that they are not removed
   # https://unix.stackexchange.com/questions/21297/how-do-i-add-an-entry-to-my-crontab
-  crontab -l | grep -v $change_script_path >> $cron_script_path;
+  # crontab -l | grep -v $change_script_path >> $cron_script_path;
 
   crontab $cron_script_path;
   systemctl restart cron;
