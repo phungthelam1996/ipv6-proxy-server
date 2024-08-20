@@ -17,6 +17,7 @@ function usage() { echo "Usage: $0 [-s | --subnet <16|32|48|64|80|96|112> proxy 
                           [-t | --proxies-type <http|socks5> result proxies type (default http)]
                           [-r | --rotating-interval <0-59> proxies extarnal address rotating time in minutes (default 0, disabled)]
                           [--start-port <5000-65536> start port for backconnect ipv4 (default 30000)]
+                          [--reboot-min <0-59> minutes reboot after 2 hours]
                           [-l | --localhost <bool> allow connections only for localhost (backconnect on 127.0.0.1)]
                           [-f | --backconnect-proxies-file <string> path to file, in which backconnect proxies list will be written
                                 when proxies start working (default \`~/proxyserver/backconnect_proxies.list\`)]    
@@ -35,7 +36,7 @@ function usage() { echo "Usage: $0 [-s | --subnet <16|32|48|64|80|96|112> proxy 
                           [--info <bool> print info about running proxy server]
                           " 1>&2; exit 1; }
 
-options=$(getopt -o ldhs:c:u:p:t:r:m:f:i:b: --long help,localhost,disable-inet6-ifaces-check,random,uninstall,info,subnet:,proxy-count:,username:,password:,proxies-type:,rotating-interval:,ipv6-mask:,interface:,start-port:,backconnect-proxies-file:,backconnect-ip:,allowed-hosts:,denied-hosts: -- "$@")
+options=$(getopt -o ldhs:c:u:p:t:r:m:f:i:b: --long help,localhost,disable-inet6-ifaces-check,random,uninstall,info,subnet:,proxy-count:,username:,password:,proxies-type:,rotating-interval:,ipv6-mask:,interface:,start-port:,reboot-min:,backconnect-proxies-file:,backconnect-ip:,allowed-hosts:,denied-hosts: -- "$@")
 
 # Throw error and chow help message if user don`t provide any arguments
 if [ $? != 0 ] ; then echo "Error: no arguments provided. Terminating..." >&2 ; usage ; fi;
@@ -59,6 +60,7 @@ interface_name="$(ip -br l | awk '$1 !~ "lo|vir|wl|@NONE" { print $1 }' | awk 'N
 # Log file for script execution
 script_log_file="/var/tmp/ipv6-proxy-server-logs.log"
 backconnect_ipv4=""
+reboot_minutes=5
 
 while true; do
   case "$1" in
@@ -80,6 +82,7 @@ while true; do
     --uninstall ) uninstall=true; shift ;;
     --info ) print_info=true; shift ;;
     --start-port ) start_port="$2"; shift 2;;
+    --reboot-min ) reboot_minutes="$2"; shift 2;;
     --random ) use_random_auth=true; shift ;;
     -- ) shift; break ;;
     * ) break ;;
@@ -139,6 +142,10 @@ function check_startup_parameters(){
   if [ $start_port -lt 5000 ] || (($start_port - $proxy_count > 65536 )); then
     log_err_print_usage_and_exit "Wrong '--start-port' parameter value, it must be more than 5000 and '--start-port' + '--proxy-count' must be lower than 65536,
   because Linux has only 65536 potentially ports";
+  fi;
+
+  if [ $reboot_minutes -lt 1 ] || ((reboot_minutes > 59 )); then
+    log_err_print_usage_and_exit "Wrong '--reboot-min' parameter value, it must be more than 0 and '--reboot-min' must be lower than 59";
   fi;
 
   if [ ! -z $backconnect_ipv4 ]; then 
@@ -360,11 +367,23 @@ function add_to_cron(){
   delete_file_if_exists $cron_script_path;
 
   # Add startup script to cron (job sheduler) to restart proxy server after reboot and rotate proxy 
-  if test -f $startup_script_path; then
+  if test -f $cron_script_path; then
     echo "File created";
   else
     echo "@reboot $bash_location $startup_script_path" > $cron_script_path;
     if [ $rotating_interval -ne 0 ]; then echo "*/$rotating_interval * * * * $bash_location $change_script_path" >> "$cron_script_path"; fi;
+    echo "00 01 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 03 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 05 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 07 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 09 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 11 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 13 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 15 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 17 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 19 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 21 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 23 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
   fi;
 
   # Add existing cron rules (not related to this proxy server) to cron script, so that they are not removed
