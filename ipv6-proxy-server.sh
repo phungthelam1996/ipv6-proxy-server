@@ -372,17 +372,17 @@ function add_to_cron(){
   else
     echo "@reboot $bash_location $startup_script_path" > $cron_script_path;
     if [ $rotating_interval -ne 0 ]; then echo "*/$rotating_interval * * * * $bash_location $change_script_path" >> "$cron_script_path"; fi;
-    # echo "00 01 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 03 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 05 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 07 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 09 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 11 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 13 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 15 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 17 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 19 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
-    # echo "00 21 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 01 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 03 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 05 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 07 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 09 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 11 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 13 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 15 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 17 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 19 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
+    echo "00 21 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
     echo "00 23 * * * /sbin/shutdown -r +$reboot_minutes" >> "$cron_script_path";
   fi;
 
